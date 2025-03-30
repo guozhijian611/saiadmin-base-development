@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统日志监控终端</title>
+    <!-- 已在下方引入Element Plus样式 -->
+    <!-- 引入字体图标 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- 引入动画库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <!-- 引入Toastify -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <!-- Import Vue 3 -->
+    <script src="//unpkg.com/vue@3"></script>
+    <!-- Import Element Plus -->
+    <script src="//unpkg.com/element-plus"></script>
+    <!-- 引入Element Plus样式 -->
+    <link rel="stylesheet" href="//unpkg.com/element-plus/dist/index.css">
+    <!-- 引入Element Plus图标 -->
+    <script src="//unpkg.com/@element-plus/icons-vue"></script>
+    <!-- 引入Axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // 配置Axios默认请求URL
+        axios.defaults.baseURL = window.location.origin;
+    </script>
+    <!-- 引入ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入Toastify -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <style>
+        :root {
+            --primary-color: #409EFF;
+            --success-color: #67C23A;
+            --warning-color: #E6A23C;
+            --danger-color: #F56C6C;
+            --info-color: #00ff1ef3;
+            --terminal-bg: #1E1E1E;
+            --terminal-text: #33FF33;
+            --terminal-border: #444;
+            --terminal-header: #333;
+        }
+       
+        
+        body {
+            /* background-color: #121212; */
+            background-image: url("https://github.com/houzisbw/vue-matrix-raindrop/blob/master/imgs/rain.gif?raw=true");
+            color: #EAEAEA;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+    
+        .el-card {
+            background-color: var(--terminal-bg);
+            border: 1px solid var(--terminal-border);
+            margin-bottom: 20px;
+        }
+        
+        .el-card__header {
+            background-color: var(--terminal-header);
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--terminal-border);
+        }
+        
+        .terminal-text {
+            color: var(--terminal-text);
+            font-family: 'Courier New', monospace;
+        }
+        
+        .log-container {
+            height: 600px;
+            overflow-y: auto;
+            background-color: #000;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .log-line {
+            font-family: 'Courier New', monospace;
+            padding: 2px 5px;
+            border-bottom: 1px dashed #333;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: green;
+
+        }
+        
+        .log-error {
+            color: #ff5252;
+        }
+        
+        .log-warning {
+            color: #ffc107;
+        }
+        
+        .log-info {
+            color: #33ff33;
+        }
+        
+        .log-debug {
+            color: #03a9f4;
+        }
+        
+        .log-empty, .log-loading, .log-error-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #aaa;
+        }
+        
+        .log-empty i, .log-loading i, .log-error-message i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .log-error-message {
+            color: #ff5252;
+        }
+        
+        .load-more-btn {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .load-more-btn:hover {
+            background-color: #444;
+        }
+        
+        .load-more-btn i {
+            margin-right: 5px;
+        }
+        
+        .system-monitor {
+            background-color: var(--terminal-bg);
+            /* background-color: rgb(0 0 0 / 80%); */
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid var(--terminal-border);
+        }
+        
+        .monitor-card {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            /* padding: 15px; */
+            height: 100%;
+            border: 1px solid #444;
+        }
+        
+        .monitor-title {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: var(--terminal-text);
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        
+        .progress-wrapper {
+            margin-bottom: 10px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .progress-bar-wrapper {
+            height: 20px;
+            background-color: #222;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s;
+            background-size: 1rem 1rem;
+            animation: progress-animation 2s linear infinite;
+        }
+        
+        .progress-bar-cpu {
+            background-color: #33ff33;
+            background-image: linear-gradient(45deg, rgba(51, 255, 51, 0.5) 25%, transparent 25%, transparent 50%, rgba(51, 255, 51, 0.5) 50%, rgba(51, 255, 51, 0.5) 75%, transparent 75%, transparent);
+        }
+        
+        .progress-bar-memory {
+            background-color: #ff9800;
+            background-image: linear-gradient(45deg, rgba(255, 152, 0, 0.5) 25%, transparent 25%, transparent 50%, rgba(255, 152, 0, 0.5) 50%, rgba(255, 152, 0, 0.5) 75%, transparent 75%, transparent);
+        }
+        
+        .progress-bar-disk {
+            background-color: #03a9f4;
+            background-image: linear-gradient(45deg, rgba(3, 169, 244, 0.5) 25%, transparent 25%, transparent 50%, rgba(3, 169, 244, 0.5) 50%, rgba(3, 169, 244, 0.5) 75%, transparent 75%, transparent);
+        }
+        
+        @keyframes progress-animation {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 1rem 0;
+            }
+        }
+        
+        .system-info-item {
+            display: flex;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed #333;
+            padding-bottom: 8px;
+            padding-left: 10px;
+        }
+        
+        .system-info-label {
+            width: 120px;
+            color: #aaa;
+        }
+        
+        .system-info-value {
+            flex: 1;
+            color: var(--terminal-text);
+        }
+        
+        .file-item {
+            transition: all 0.3s;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+        
+        .file-item:hover {
+            background-color: #333;
+        }
+        
+        .file-item.active {
+            background-color: #444;
+            border-left: 3px solid var(--terminal-text);
+        }
+        
+        /* 日志文件列表自定义样式 */
+        .log-files-list {
+            padding: 0;
+        }
+        
+        .log-file-item {
+            background-color: var(--terminal-bg);
+            border-radius: 4px;
+            margin-bottom: 10px;
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px dotted #444;
+            transition: all 0.3s;
+        }
+        
+        .log-file-item:hover {
+            background-color: #2A2A2A;
+        }
+        
+        .log-file-item.active {
+            background-color: #333;
+            border-left: 3px solid var(--terminal-text);
+            padding-left: 15px;
+        }
+        
+        .file-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .file-header i {
+            color: var(--terminal-text);
+            margin-right: 8px;
+        }
+        
+        .file-name {
+            word-break: break-all;
+            font-weight: 500;
+            color: #EAEAEA;
+        }
+        
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            border-top: 1px dotted #444;
+            padding-top: 8px;
+        }
+        
+        .file-size {
+            color: var(--success-color);
+            margin-right: 10px;
+            font-size: 0.85rem;
+        }
+        
+        .file-time {
+            color: #BBBBBB;
+            font-size: 0.85rem;
+        }
+        
+        .terminal-header {
+            color: var(--terminal-text);
+            font-weight: bold;
+            padding: 5px 0;
+            margin-bottom: 10px;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #222;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* 动画效果 */
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.3s;
+        }
+        
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+        
+        /* 自定义Toast样式 */
+        .terminal-toast {
+            background-color: var(--terminal-bg) !important;
+            border: 1px solid var(--terminal-border);
+            color: var(--terminal-text) !important;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .error-toast {
+            border-left: 4px solid var(--danger-color) !important;
+        }
+        
+        .success-toast {
+            border-left: 4px solid var(--success-color) !important;
+        }
+        
+        .info-toast {
+            border-left: 4px solid var(--primary-color) !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" >
+        <el-container >
+            <el-header>
+                <el-row :gutter="20" class="animate__animated animate__fadeIn">
+                    <el-col :span="24">
+                        <h1 class="terminal-text text-center">
+                            <i class="bi bi-terminal"></i> 系统日志监控终端
+                            <small style="font-size: 0.8rem; opacity: 0.7;">
+                                <i class="bi bi-clock"></i> {{ currentTime }}
+                            </small>
+                        </h1>
+                    </el-col>
+                </el-row>
+            </el-header>
+            
+            <el-main>
+                <!-- 系统资源监控 -->
+                <el-row :gutter="20" v-if="systemInfo" class="animate__animated animate__fadeIn">
+                    <el-col :span="24">
+                        <div class="system-monitor">
+                            <h4 class="mb-3 terminal-text"><i class="bi bi-speedometer2"></i> 系统资源监控</h4>
+                            
+                            <el-row :gutter="20">
+                                <!-- CPU使用率 -->
+                                <el-col :span="8">
+                                    <div class="progress-wrapper">
+                                        <div class="progress-label">
+                                            <span class="terminal-text"><i class="bi bi-cpu"></i> CPU使用率</span>
+                                            <span class="terminal-text">{{ cpuUsage }}%</span>
+                                        </div>
+                                        <div class="progress-bar-wrapper">
+                                            <div class="progress-bar progress-bar-cpu" :style="{ width: cpuUsage + '%' }"></div>
+                                        </div>
+                                        <div class="mt-2 text-muted">
+                                            <small>核心数: {{ cpuCores }} | 当前负载: {{ cpuLoad }}</small>
+                                        </div>
+                                    </div>
+                                </el-col>
+                                
+                                <!-- 内存使用率 -->
+                                <el-col :span="8">
+                                    <div class="progress-wrapper">
+                                        <div class="progress-label">
+                                            <span class="terminal-text"><i class="bi bi-memory"></i> 内存使用率</span>
+                                            <span class="terminal-text">{{ memoryUsage }}%</span>
+                                        </div>
+                                        <div class="progress-bar-wrapper">
+                                            <div class="progress-bar progress-bar-memory" :style="{ width: memoryUsage + '%' }"></div>
+                                        </div>
+                                        <div class="mt-2 text-muted">
+                                            <small>已用: {{ memoryUsed }} | 总计: {{ memoryTotal }}</small>
+                                        </div>
+                                    </div>
+                                </el-col>
+                                
+                                <!-- 磁盘使用率 -->
+                                <el-col :span="8">
+                                    <div class="progress-wrapper">
+                                        <div class="progress-label">
+                                            <span class="terminal-text"><i class="bi bi-hdd"></i> 磁盘使用率</span>
+                                            <span class="terminal-text">{{ diskUsage }}%</span>
+                                        </div>
+                                        <div class="progress-bar-wrapper">
+                                            <div class="progress-bar progress-bar-disk" :style="{ width: diskUsage + '%' }"></div>
+                                        </div>
+                                        <div class="mt-2 text-muted">
+                                            <small>已用: {{ diskUsed }} | 总计: {{ diskTotal }}</small>
+                                        </div>
+                                    </div>
+                                </el-col>
+                            </el-row>
+                            
+                            <el-row :gutter="20" class="mt-3">
+                                <el-col :span="12">
+                                    <div class="monitor-card">
+                                        <div class="monitor-title"><i class="bi bi-info-circle"></i> 系统信息</div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-hdd"></i> 操作系统:</div>
+                                            <div class="system-info-value">{{ osInfo }}</div>
+                                        </div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-clock-history"></i> 运行时间:</div>
+                                            <div class="system-info-value">{{ uptime }}</div>
+                                        </div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-code-slash"></i> PHP版本:</div>
+                                            <div class="system-info-value">{{ phpVersion }}</div>
+                                        </div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-server"></i> 服务器:</div>
+                                            <div class="system-info-value">{{ serverInfo }}</div>
+                                        </div>
+                                    </div>
+                                </el-col>
+                                <el-col :span="12">
+                                    <div class="monitor-card">
+                                        <div class="monitor-title"><i class="bi bi-activity"></i> 进程信息</div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-cpu"></i> 进程数:</div>
+                                            <div class="system-info-value">{{ processCount }}</div>
+                                        </div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-people"></i> 用户数:</div>
+                                            <div class="system-info-value">{{ userCount }}</div>
+                                        </div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-lightning"></i> 最近1分钟负载:</div>
+                                            <div class="system-info-value">{{ load1 }}</div>
+                                        </div>
+                                        <div class="system-info-item">
+                                            <div class="system-info-label"><i class="bi bi-lightning-charge"></i> 最近5分钟负载:</div>
+                                            <div class="system-info-value">{{ load5 }}</div>
+                                        </div>
+                                    </div>
+                                </el-col>
+                            </el-row>
+                        </div>
+                    </el-col>
+                </el-row>
+                
+                <!-- 日志查看区域 -->
+                <el-row :gutter="20">
+                    <!-- 文件列表 -->
+                    <el-col :span="6">
+                        <el-card>
+                            <template #header>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="terminal-text"><i class="bi bi-files"></i> 日志文件列表</span>
+                                    <el-button type="success" size="small" @click="loadLogFiles" :loading="loading.files">
+                                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                                    </el-button>
+                                </div>
+                            </template>
+                            
+                            <el-scrollbar height="500px">
+                                <div v-if="loading.files" class="text-center p-5">
+                                    <el-skeleton :rows="6" animated />
+                                </div>
+                                
+                                <template v-else>
+                                    <div v-if="logFiles.length === 0">
+                                        <el-empty description="没有找到日志文件" />
+                                    </div>
+                                    
+                                    <div v-else class="log-files-list">
+                                        <div 
+                                            v-for="file in logFiles" 
+                                            :key="file.name"
+                                            @click="selectLogFile(file)"
+                                            :class="['log-file-item', currentFile === file.name ? 'active' : '']"
+                                            class="animate__animated animate__fadeIn">
+                                            <div class="file-header">
+                                                <i class="bi bi-file-text"></i>
+                                                <span class="file-name">{{ file.name }}</span>
+                                            </div>
+                                            <div class="file-info">
+                                                <span class="file-size"><i class="bi bi-hdd"></i> {{ file.size }}</span>
+                                                <span class="file-time"><i class="bi bi-clock-history"></i> {{ file.modified }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </el-scrollbar>
+                        </el-card>
+                    </el-col>
+                    
+                    <!-- 日志内容 -->
+                    <el-col :span="18">
+                        <el-card>
+                            <template #header>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span v-if="currentFile" class="terminal-text">
+                                            <i class="bi bi-file-text"></i> {{ currentFile }}
+                                        </span>
+                                        <span v-else class="text-muted">
+                                            <i class="bi bi-exclamation-circle"></i> 请选择一个日志文件
+                                        </span>
+                                        <small class="ms-3 text-muted">
+                                            <i class="bi bi-clock"></i> 上次更新: {{ lastUpdateTime || '无' }}
+                                        </small>
+                                    </div>
+                                    
+                                    <div>
+                                        <el-button-group>
+                                            <el-button 
+                                                type="primary" 
+                                                size="small" 
+                                                @click="refreshLogContent" 
+                                                :disabled="!currentFile"
+                                                :loading="loading.content">
+                                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                                            </el-button>
+                                            <el-button 
+                                                type="danger" 
+                                                size="small" 
+                                                @click="clearLogFile" 
+                                                :disabled="!currentFile">
+                                                <i class="bi bi-trash"></i> 清空
+                                            </el-button>
+                                        </el-button-group>
+                                        
+                                        <el-switch
+                                            v-model="autoScroll"
+                                            active-text="自动滚动"
+                                            inactive-text="手动滚动"
+                                            class="ms-3"
+                                        />
+                                        
+                                        <el-switch
+                                            v-model="autoRefresh"
+                                            active-text="自动刷新"
+                                            inactive-text="手动刷新"
+                                            class="ms-3"
+                                        />
+                                    </div>
+                                </div>
+                            </template>
+                            
+                            <div class="log-container" ref="logContainer">
+                                <button 
+                                    class="load-more-btn" 
+                                    v-if="hasMoreHistory && !loading.moreContent" 
+                                    @click="loadMoreHistory">
+                                    <i class="bi bi-arrow-up-circle"></i> 加载更多历史日志
+                                </button>
+                                
+                                <div v-if="loading.content && !logContent.length" class="log-loading">
+                                    <el-icon class="is-loading"><Loading /></el-icon>
+                                    <p class="mt-3">正在加载日志内容...</p>
+                                </div>
+                                
+                                <div v-else-if="!currentFile" class="log-empty">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                    <p>请选择一个日志文件</p>
+                                </div>
+                                
+                                <div v-else-if="logContent.length === 0 && !loading.content" class="log-empty">
+                                    <i class="bi bi-file-earmark"></i>
+                                    <p>日志文件为空</p>
+                                </div>
+                                
+                                <div v-else class="log-lines">
+                                    <div 
+                                        v-for="(line, index) in logContent" 
+                                        :key="index" 
+                                        class="log-line" 
+                                        :class="getLogLineClass(line)">
+                                        <pre><code>{{ line }}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </el-card>
+                    </el-col>
+                </el-row>
+                
+                <!-- 系统监控图表区域 -->
+                <el-row :gutter="20" class="mt-4" v-if="systemInfo">
+                    <el-col :span="24">
+                        <el-card>
+                            <template #header>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="terminal-text"><i class="bi bi-graph-up"></i> 系统资源监控图表</span>
+                                </div>
+                            </template>
+                            
+                            <el-row :gutter="20">
+                                <el-col :span="12">
+                                    <div ref="cpuChart" style="height: 300px;"></div>
+                                </el-col>
+                                <el-col :span="12">
+                                    <div ref="memoryChart" style="height: 300px;"></div>
+                                </el-col>
+                            </el-row>
+                        </el-card>
+                    </el-col>
+                </el-row>
+            </el-main>
+            
+            <el-footer class="text-center text-muted">
+                <p>系统日志监控终端 &copy; {{ new Date().getFullYear() }}</p>
+            </el-footer>
+        </el-container>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, watch, computed } = Vue;
+        
+        // 创建Vue应用
+        const app = createApp({
+            setup() {
+                // 响应式数据
+                const systemStatus = ref('在线');
+                const currentTime = ref('');
+                const logFiles = ref([]);
+                const currentFile = ref(null);
+                const logContent = ref([]);
+                const currentPosition = ref(0);
+                const startPosition = ref(0);
+                const hasMoreHistory = ref(true);
+                const autoScroll = ref(true);
+                const autoRefresh = ref(true);
+                const lastUpdateTime = ref('');
+                const systemInfo = ref(null);
+                const cpuData = ref([]);
+                const memoryData = ref([]);
+                const timeData = ref([]);
+                
+                // 加载状态
+                const loading = reactive({
+                    files: false,
+                    content: false,
+                    moreContent: false,
+                    system: false
+                });
+                
+                // DOM 引用
+                const logContainer = ref(null);
+                const cpuChart = ref(null);
+                const memoryChart = ref(null);
+                
+                // 图表实例
+                let cpuChartInstance = null;
+                let memoryChartInstance = null;
+                let refreshTimer = null;
+                
+                // 方法
+                // 加载日志文件列表
+                const loadLogFiles = async () => {
+                    loading.files = true;
+                    try {
+                        // 打印请求URL，方便调试
+                        console.log('请求日志文件列表URL:', '/logview/getLogFiles');
+                        const response = await axios.get('/logview/getLogFiles');
+                        console.log('日志文件列表响应:', response);
+                        
+                        if (response.data && Array.isArray(response.data)) {
+                            // 处理日期格式，确保正确显示
+                            logFiles.value = response.data.map(file => ({
+                                ...file,
+                                modified: file.modified ? file.modified.replace(/\s+/g, ' ').trim() : ''
+                            }));
+                            console.log('处理后的日志文件列表:', logFiles.value);
+                            showInfo('日志文件列表已更新');
+                        } else {
+                            console.error('日志文件列表格式错误:', response.data);
+                            showError('日志文件列表格式错误');
+                        }
+                    } catch (error) {
+                        console.error('加载日志文件列表失败:', error);
+                        showError(`加载日志文件列表失败: ${error.message || '未知错误'}`);
+                    } finally {
+                        loading.files = false;
+                    }
+                };
+                
+                // 选择日志文件
+                const selectLogFile = (file) => {
+                    currentFile.value = file.name;
+                    currentPosition.value = 0;
+                    startPosition.value = 0;
+                    hasMoreHistory.value = true;
+                    logContent.value = [];
+                    loadLogContent();
+                };
+                
+                // 加载日志内容
+                const loadLogContent = async (position = 0) => {
+                    if (!currentFile.value) return;
+                    
+                    loading.content = true;
+                    try {
+                        // 打印请求URL和参数，方便调试
+                        console.log('请求日志内容URL:', '/logview/getLogContent', {
+                            file: currentFile.value,
+                            position: position
+                        });
+                        
+                        const response = await axios.get('/logview/getLogContent', {
+                            params: {
+                                file: currentFile.value,
+                                // position: position
+                            }
+                        });
+                        
+                        console.log('日志内容响应:', response);
+                        
+                        // 检查响应格式并适配不同的返回结构
+                        if (response.data) {
+                            let content = [];
+                            let newPosition = position;
+                            let hasMoreData = false;
+                            
+                            // 处理不同的响应格式
+                            if (response.data.content) {
+                                // 标准格式：{content: [...], position: number}
+                                content = response.data.content;
+                                newPosition = response.data.position || position;
+                                hasMoreData = response.data.hasMore !== false;
+                            } else if (response.data.data) {
+                                // 替代格式：{code: 0, data: string, position: number}
+                                // 将字符串内容按行分割
+                                const rawContent = response.data.data;
+                                if (typeof rawContent === 'string') {
+                                    content = rawContent.split('\n').filter(line => line.trim() !== '');
+                                }
+                                newPosition = response.data.position || position;
+                                hasMoreData = response.data.hasMore !== false;
+                            }
+                            
+                            // 更新内容
+                            if (position === 0) {
+                                logContent.value = content;
+                            } else {
+                                // 追加新内容
+                                logContent.value = [...logContent.value, ...content];
+                            }
+                            
+                            currentPosition.value = newPosition;
+                            hasMoreHistory.value = hasMoreData;
+                            lastUpdateTime.value = new Date().toLocaleTimeString('zh-CN');
+                            
+                            // 自动滚动到底部
+                            if (autoScroll.value && !loading.moreContent) {
+                                setTimeout(() => {
+                                    scrollToBottom();
+                                }, 100);
+                            }
+                        } else {
+                            console.error('日志内容响应无效:', response);
+                            showError('日志内容响应无效');
+                        }
+                    } catch (error) {
+                        console.error('加载日志内容失败:', error);
+                        showError(`加载日志内容失败: ${error.message || '未知错误'}`);
+                    } finally {
+                        loading.content = false;
+                    }
+                };
+                
+                // 加载更多历史日志
+                const loadMoreHistory = async () => {
+                    if (!currentFile.value || loading.moreContent) return;
+                    
+                    loading.moreContent = true;
+                    try {
+                        // 计算新的开始位置（向前获取更多内容）
+                        const newStartPosition = Math.max(0, startPosition.value - 50000);
+                        
+                        // 打印请求URL和参数，方便调试
+                        console.log('请求更多历史日志URL:', '/logview/getLogContent', {
+                            file: currentFile.value,
+                            position: newStartPosition,
+                            end_position: startPosition.value
+                        });
+                        
+                        const response = await axios.get('/logview/getLogContent', {
+                            params: {
+                                file: currentFile.value,
+                                position: newStartPosition,
+                                end_position: startPosition.value
+                            }
+                        });
+                        
+                        console.log('更多历史日志响应:', response);
+                        
+                        // 记录滚动位置
+                        const scrollContainer = logContainer.value;
+                        const oldHeight = scrollContainer.scrollHeight;
+                        
+                        // 更新开始位置
+                        startPosition.value = newStartPosition;
+                        
+                        // 在内容前面添加新内容
+                        if (response.data.content && response.data.content.length > 0) {
+                            logContent.value = [...response.data.content, ...logContent.value];
+                            
+                            // 恢复滚动位置
+                            setTimeout(() => {
+                                scrollContainer.scrollTop = scrollContainer.scrollHeight - oldHeight;
+                            }, 10);
+                        } else {
+                            // 没有更多历史日志了
+                            hasMoreHistory.value = false;
+                            showInfo('已加载全部历史日志');
+                        }
+                    } catch (error) {
+                        console.error('加载历史日志失败:', error);
+                        showError('加载历史日志失败');
+                    } finally {
+                        loading.moreContent = false;
+                    }
+                };
+                
+                // 刷新日志内容
+                const refreshLogContent = () => {
+                    if (currentFile.value) {
+                        loadLogContent(currentPosition.value);
+                    }
+                };
+                
+                // 清空日志文件
+                const clearLogFile = async () => {
+                    if (!currentFile.value) return;
+                    
+                    try {
+                        // 使用Element Plus确认对话框
+                        await ElementPlus.ElMessageBox.confirm(
+                            `确定要清空日志文件 ${currentFile.value} 吗？此操作不可恢复！`,
+                            '警告',
+                            {
+                                confirmButtonText: '确定',
+                                cancelButtonText: '取消',
+                                type: 'warning',
+                            }
+                        );
+                        
+                        loading.content = true;
+                        const response = await axios.post('/logview/clearLog', {
+                            file: currentFile.value
+                        });
+                        
+                        if (response.data.success) {
+                            // 清空成功
+                            logContent.value = [];
+                            currentPosition.value = 0;
+                            startPosition.value = 0;
+                            hasMoreHistory.value = false;
+                            
+                            // 显示成功消息
+                            showSuccess(`日志文件 ${currentFile.value} 已清空`);
+                            
+                            // 更新文件列表（获取最新的文件大小）
+                            setTimeout(() => {
+                                loadLogFiles();
+                            }, 1000);
+                        } else {
+                            // 清空失败
+                            showError(`清空日志失败: ${response.data.message || '未知错误'}`);
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('清空日志失败:', error);
+                            showError('清空日志失败: 网络错误');
+                        }
+                    } finally {
+                        loading.content = false;
+                    }
+                };
+                
+                // 获取系统信息
+                const getSystemInfo = async () => {
+                    loading.system = true;
+                    try {
+                        const response = await axios.get('/logview/getSystemInfo');
+                        console.log('系统信息响应:', response.data);
+                        
+                        // 处理嵌套的数据结构 {code: 0, data: {...}}
+                        if (response.data && response.data.code === 0 && response.data.data) {
+                            systemInfo.value = response.data.data;
+                        } else {
+                            systemInfo.value = response.data;
+                        }
+                        
+                        console.log('处理后的系统信息:', systemInfo.value);
+                        
+                        // 更新图表数据
+                        const now = new Date();
+                        const timeStr = now.toLocaleTimeString('zh-CN');
+                        
+                        // 限制数据点数量
+                        if (timeData.value.length > 20) {
+                            timeData.value.shift();
+                            cpuData.value.shift();
+                            memoryData.value.shift();
+                        }
+                        
+                        timeData.value.push(timeStr);
+                        cpuData.value.push(parseFloat(systemInfo.value?.cpu?.usage || 0));
+                        memoryData.value.push(parseFloat(systemInfo.value?.memory?.usage || 0));
+                        
+                        // 更新图表
+                        updateCharts();
+                    } catch (error) {
+                        console.error('获取系统信息失败:', error);
+                    } finally {
+                        loading.system = false;
+                    }
+                };
+                
+                // 滚动到底部
+                const scrollToBottom = () => {
+                    if (logContainer.value) {
+                        logContainer.value.scrollTop = logContainer.value.scrollHeight;
+                    }
+                };
+                
+                // 根据日志内容获取样式类
+                const getLogLineClass = (line) => {
+                    if (line.includes('ERROR') || line.includes('CRITICAL') || line.includes('FATAL')) {
+                        return 'log-error';
+                    } else if (line.includes('WARNING') || line.includes('WARN')) {
+                        return 'log-warning';
+                    } else if (line.includes('INFO') || line.includes('NOTICE')) {
+                        return 'log-info';
+                    } else if (line.includes('DEBUG')) {
+                        return 'log-debug';
+                    }
+                    return '';
+                };
+                
+                // 初始化图表
+                const initCharts = () => {
+                    // 确保DOM元素存在
+                    if (!cpuChart.value || !memoryChart.value) {
+                        console.warn('图表DOM元素不存在，跳过初始化');
+                        return;
+                    }
+                    
+                    // CPU使用率图表
+                    cpuChartInstance = echarts.init(cpuChart.value, 'dark');
+                    const cpuOption = {
+                        title: {
+                            text: 'CPU使用率趋势',
+                            textStyle: {
+                                color: '#33ff33'
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            formatter: '{b}<br/>{a}: {c}%'
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: timeData.value,
+                            axisLabel: {
+                                rotate: 45
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            min: 0,
+                            max: 100,
+                            axisLabel: {
+                                formatter: '{value}%'
+                            }
+                        },
+                        series: [{
+                            name: 'CPU使用率',
+                            type: 'line',
+                            data: cpuData.value,
+                            smooth: true,
+                            showSymbol: false,
+                            lineStyle: {
+                                width: 3,
+                                color: '#33ff33'
+                            },
+                            areaStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: 'rgba(51, 255, 51, 0.5)' },
+                                    { offset: 1, color: 'rgba(51, 255, 51, 0.1)' }
+                                ])
+                            }
+                        }]
+                    };
+                    cpuChartInstance.setOption(cpuOption);
+                    
+                    // 内存使用率图表
+                    memoryChartInstance = echarts.init(memoryChart.value, 'dark');
+                    const memoryOption = {
+                        title: {
+                            text: '内存使用率趋势',
+                            textStyle: {
+                                color: '#ff9800'
+                            }
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            formatter: '{b}<br/>{a}: {c}%'
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: timeData.value,
+                            axisLabel: {
+                                rotate: 45
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            min: 0,
+                            max: 100,
+                            axisLabel: {
+                                formatter: '{value}%'
+                            }
+                        },
+                        series: [{
+                            name: '内存使用率',
+                            type: 'line',
+                            data: memoryData.value,
+                            smooth: true,
+                            showSymbol: false,
+                            lineStyle: {
+                                width: 3,
+                                color: '#ff9800'
+                            },
+                            areaStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: 'rgba(255, 152, 0, 0.5)' },
+                                    { offset: 1, color: 'rgba(255, 152, 0, 0.1)' }
+                                ])
+                            }
+                        }]
+                    };
+                    memoryChartInstance.setOption(memoryOption);
+                    
+                    // 窗口大小变化时重绘图表
+                    window.addEventListener('resize', () => {
+                        cpuChartInstance.resize();
+                        memoryChartInstance.resize();
+                    });
+                };
+                
+                // 更新图表
+                const updateCharts = () => {
+                    if (cpuChartInstance && memoryChartInstance) {
+                        cpuChartInstance.setOption({
+                            xAxis: {
+                                data: timeData.value
+                            },
+                            series: [{
+                                data: cpuData.value
+                            }]
+                        });
+                        
+                        memoryChartInstance.setOption({
+                            xAxis: {
+                                data: timeData.value
+                            },
+                            series: [{
+                                data: memoryData.value
+                            }]
+                        });
+                    }
+                };
+                
+                // 开始自动刷新
+                const startAutoRefresh = () => {
+                    stopAutoRefresh();
+                    
+                    refreshTimer = setInterval(() => {
+                        // 刷新系统信息
+                        getSystemInfo();
+                        
+                        // 如果有选中的日志文件，刷新日志内容
+                        if (currentFile.value && autoRefresh.value) {
+                            refreshLogContent();
+                        }
+                    }, 5000); // 每5秒刷新一次
+                };
+                
+                // 停止自动刷新
+                const stopAutoRefresh = () => {
+                    if (refreshTimer) {
+                        clearInterval(refreshTimer);
+                        refreshTimer = null;
+                    }
+                };
+                
+                // 更新当前时间
+                const updateCurrentTime = () => {
+                    const now = new Date();
+                    currentTime.value = now.toLocaleString('zh-CN');
+                };
+                
+                // 显示错误信息
+                const showError = (message) => {
+                    Toastify({
+                        text: message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        style: {
+                            background: "#F56C6C"
+                        },
+                        stopOnFocus: true,
+                        className: "error-toast animate__animated animate__fadeInRight"
+                    }).showToast();
+                };
+                
+                // 显示成功信息
+                const showSuccess = (message) => {
+                    Toastify({
+                        text: message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        style: {
+                            background: "#67C23A"
+                        },
+                        stopOnFocus: true,
+                        className: "success-toast animate__animated animate__fadeInRight"
+                    }).showToast();
+                };
+                
+                // 显示信息提示
+                const showInfo = (message) => {
+                    Toastify({
+                        text: message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        style: {
+                            background: "#409EFF"
+                        },
+                        stopOnFocus: true,
+                        className: "info-toast animate__animated animate__fadeInRight"
+                    }).showToast();
+                };
+                
+                // 监听自动刷新开关
+                watch(autoRefresh, (newValue) => {
+                    if (newValue) {
+                        startAutoRefresh();
+                        showInfo('自动刷新已启动');
+                    } else {
+                        stopAutoRefresh();
+                        showInfo('自动刷新已暂停');
+                    }
+                });
+                
+                // 组件挂载后执行
+                onMounted(() => {
+                    // 初始化时间显示
+                    updateCurrentTime();
+                    setInterval(updateCurrentTime, 1000);
+                    
+                    // 加载日志文件列表
+                    loadLogFiles();
+                    
+                    // 获取系统信息
+                    getSystemInfo();
+                    
+                    // 等待DOM渲染完成后再初始化图表
+                    setTimeout(() => {
+                        initCharts();
+                    }, 500);
+                    
+                    // 启动自动刷新
+                    startAutoRefresh();
+                    
+                    // 显示欢迎信息
+                    setTimeout(() => {
+                        showInfo('系统日志监控终端已启动');
+                    }, 500);
+                });
+                
+                // 计算属性，适配后端返回的数据结构
+                const cpuUsage = computed(() => systemInfo.value?.cpu?.usage || 0);
+                const memoryUsage = computed(() => systemInfo.value?.memory?.usage || 0);
+                const diskUsage = computed(() => systemInfo.value?.disk?.usage || 0);
+                
+                // 适配后端返回的数据结构
+                const cpuCores = computed(() => systemInfo.value?.cpu?.cores || '-');
+                const cpuLoad = computed(() => systemInfo.value?.cpu?.load || '-');
+                const memoryUsed = computed(() => systemInfo.value?.memory?.used + ' GB' || '-');
+                const memoryTotal = computed(() => systemInfo.value?.memory?.total + ' GB' || '-');
+                const diskUsed = computed(() => systemInfo.value?.disk?.used + ' GB' || '-');
+                const diskTotal = computed(() => systemInfo.value?.disk?.total + ' GB' || '-');
+                
+                // PHP相关信息
+                const phpVersion = computed(() => {
+                    if (systemInfo.value?.php) {
+                        return `${systemInfo.value.php.version} (${systemInfo.value.php.sapi})`;
+                    }
+                    return '-';
+                });
+                
+                // 系统信息
+                const osInfo = computed(() => systemInfo.value?.php?.os || '-');
+                const uptime = computed(() => systemInfo.value?.uptime || '-');
+                const serverInfo = computed(() => 'Webman' || '-');
+                
+                // 进程信息
+                const processCount = computed(() => '- (暂无数据)');
+                const userCount = computed(() => '- (暂无数据)');
+                const load1 = computed(() => '- (暂无数据)');
+                const load5 = computed(() => '- (暂无数据)');
+                
+                return {
+                    // 数据
+                    systemStatus,
+                    currentTime,
+                    logFiles,
+                    currentFile,
+                    logContent,
+                    hasMoreHistory,
+                    autoScroll,
+                    autoRefresh,
+                    lastUpdateTime,
+                    systemInfo,
+                    loading,
+                    
+                    // 计算属性
+                    cpuUsage,
+                    memoryUsage,
+                    diskUsage,
+                    cpuCores,
+                    cpuLoad,
+                    memoryUsed,
+                    memoryTotal,
+                    diskUsed,
+                    diskTotal,
+                    osInfo,
+                    uptime,
+                    phpVersion,
+                    serverInfo,
+                    processCount,
+                    userCount,
+                    load1,
+                    load5,
+                    
+                    // DOM引用
+                    logContainer,
+                    cpuChart,
+                    memoryChart,
+                    
+                    // 方法
+                    loadLogFiles,
+                    selectLogFile,
+                    loadLogContent,
+                    loadMoreHistory,
+                    refreshLogContent,
+                    clearLogFile,
+                    getLogLineClass,
+                    scrollToBottom
+                };
+            }
+        });
+        
+        // 注册Element Plus
+        for (const [key, component] of Object.entries(ElementPlus)) {
+            app.component(key, component);
+        }
+        
+        // 注册Element Plus图标
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component);
+        }
+        
+        // 注册 Loading 图标为全局组件（如果还没有注册）
+        if (!app._context.components['Loading']) {
+            app.component('Loading', ElementPlusIconsVue.Loading);
+        }
+        
+        // 挂载Vue应用
+        app.mount('#app');
+    </script>
+</body>
+</html>
